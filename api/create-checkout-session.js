@@ -116,6 +116,10 @@ module.exports = async (req, res) => {
       ]
     };
 
+    // Attach the logged-in user so the webhook can award points + referral commission
+    if (body && body.userId) params.client_reference_id = String(body.userId);
+    if (body && body.email) params.customer_email = String(body.email);
+
     const stripeRes = await fetch('https://api.stripe.com/v1/checkout/sessions', {
       method: 'POST',
       headers: {
@@ -134,4 +138,3 @@ module.exports = async (req, res) => {
     return res.status(400).json({ error: err.message });
   }
 };
-
