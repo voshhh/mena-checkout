@@ -5,7 +5,7 @@
 // Health check: open this URL in a browser (a GET) to see whether your key is set.
 
 const CATALOG = {
-  "GLP3-R": { "10 mg": 6999, "20 mg": 11999 }, "BPC-157": 3999, "TB-500": 5499, "Tesamorelin": 8499, "GLP2-T": 5999,
+  "GLP3-R": { "10 mg": 6999, "20 mg": 11999 }, "BPC-157": { "5 mg": 3999, "10 mg": 5999 }, "TB-500": 5499, "Tesamorelin": { "5 mg": 4499, "10 mg": 6999 }, "GLP2-T": 5999,
   "NAD+": 6999, "Glutathione": 7099, "Cagrilintide": 6999, "L-Carnitine": 4499, "5-Amino-1MQ": 6000,
   "Sermorelin": 3999, "CJC-1295 (No DAC) + Ipamorelin": 6999, "Ipamorelin": 5999, "IGF-1 LR3": 7999,
   "IGF-1": 6999, "KPV": 5499, "MOTS-c": 3999, "DSIP": 5499, "Kisspeptin": 6499, "SS-31": 6499,
@@ -58,7 +58,7 @@ module.exports = async (req, res) => {
   if (req.method === 'GET') {
     return res.status(200).json({
       ok: true,
-      message: 'Vera checkout function is live. POST { items: [...] } to start a checkout.',
+      message: 'Mena checkout function is live. POST { items: [...] } to start a checkout.',
       stripeKeyPresent: !!process.env.STRIPE_SECRET_KEY
     });
   }
