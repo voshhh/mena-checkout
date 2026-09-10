@@ -11,16 +11,21 @@
 
 const crypto = require('crypto');
 
-// NOWPayments signs the RAW body, so do not let the platform parse it first.
-module.exports.config = { api: { bodyParser: false } };
-
-function readRaw(req) {
-  return new Promise((resolve, reject) => {
+// Read the request body whether Vercel already parsed it or not.
+// NOTE: NOWPayments signs the ALPHABETICALLY-SORTED JSON, so sortDeep() below
+// reproduces the exact signed string from the parsed object — we do not need the
+// raw bytes, which lets this file stay structurally identical to create-invoice.js.
+async function readEvent(req) {
+  if (req.body !== undefined) {
+    return typeof req.body === 'string' ? JSON.parse(req.body || '{}') : req.body;
+  }
+  const raw = await new Promise((resolve, reject) => {
     const chunks = [];
     req.on('data', (c) => chunks.push(Buffer.isBuffer(c) ? c : Buffer.from(c)));
     req.on('end', () => resolve(Buffer.concat(chunks)));
     req.on('error', reject);
   });
+  return JSON.parse(raw.toString('utf8') || '{}');
 }
 
 // Recursively sort object keys alphabetically (NOWPayments hashes the sorted payload).
@@ -69,11 +74,8 @@ module.exports = async (req, res) => {
   }
   if (req.method !== 'POST') return res.status(405).send('POST only');
 
-  let raw;
-  try { raw = await readRaw(req); } catch (e) { return res.status(400).send('cannot read body'); }
-
   let event;
-  try { event = JSON.parse(raw.toString('utf8') || '{}'); } catch (e) { return res.status(400).send('bad json'); }
+  try { event = await readEvent(req); } catch (e) { return res.status(400).send('bad json'); }
 
   if (!verifySig(event, req.headers['x-nowpayments-sig'], process.env.NOWPAYMENTS_IPN_SECRET)) {
     return res.status(400).send('signature verification failed');
@@ -91,11 +93,8 @@ module.exports = async (req, res) => {
       if (buyer && buyer !== 'guest' && subtotal > 0) {
         await sbRpc('process_order', { p_order: ref, p_buyer: buyer, p_subtotal: subtotal });
       }
-    } else if (status === 'refunded' || status === 'expired' || status === 'failed') {
-      // Reverse points/commission only for a real reversal (refund); expired/failed never awarded, so skip.
-      if (status === 'refunded' && ref) {
-        await sbRpc('reverse_order', { p_order: ref });
-      }
+    } else if (status === 'refunded') {
+      if (ref) await sbRpc('reverse_order', { p_order: ref });
     }
     return res.status(200).json({ received: true });
   } catch (e) {
